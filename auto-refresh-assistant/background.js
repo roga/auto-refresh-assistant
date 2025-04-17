@@ -3,6 +3,8 @@ const tabTimers = {};
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const { action, seconds, tabId } = message;
 
+  if (!tabId) return;
+
   if (action === "start") {
     if (tabTimers[tabId]) {
       clearInterval(tabTimers[tabId]);

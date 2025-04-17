@@ -1,4 +1,6 @@
 let countdownInterval;
+let countdownRemaining = 0;
+let refreshIntervalSeconds = 0;
 
 document.addEventListener("DOMContentLoaded", function () {
   const startBtn = document.getElementById("start");
@@ -6,43 +8,59 @@ document.addEventListener("DOMContentLoaded", function () {
   const secondsInput = document.getElementById("seconds");
   const statusText = document.getElementById("status");
 
+  function updateCountdownUI() {
+    if (countdownRemaining > 0) {
+      statusText.textContent = `Remaining: ${countdownRemaining} seconds`;
+    } else {
+      statusText.textContent = `Refreshing...`;
+    }
+  }
+
+  function startCountdown(tabId) {
+    clearInterval(countdownInterval);
+    countdownRemaining = refreshIntervalSeconds;
+    updateCountdownUI();
+
+    countdownInterval = setInterval(() => {
+      countdownRemaining--;
+      if (countdownRemaining > 0) {
+        updateCountdownUI();
+      } else {
+        statusText.textContent = `Refreshing...`;
+        countdownRemaining = refreshIntervalSeconds;
+        updateCountdownUI();
+      }
+    }, 1000);
+  }
+
   startBtn.addEventListener("click", function () {
     const seconds = parseInt(secondsInput.value, 10);
 
     if (isNaN(seconds) || seconds < 1) {
-      statusText.textContent = "Invalid Format.";
+      statusText.textContent = "Please enter a valid number of seconds.";
       return;
     }
 
-    let remaining = seconds;
-    statusText.textContent = `${remaining} secs remaining.`;
+    refreshIntervalSeconds = seconds;
 
-    clearInterval(countdownInterval);
-    countdownInterval = setInterval(() => {
-      remaining--;
-      if (remaining > 0) {
-        statusText.textContent = `${remaining} secs remaining.`;
-      } else {
-        clearInterval(countdownInterval);
-        statusText.textContent = "Finish";
-      }
-    }, 1000);
-
-    // 查詢目前分頁並傳送訊息給 background.js
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       if (tabs.length > 0) {
+        const tabId = tabs[0].id;
+
         chrome.runtime.sendMessage({
           action: "start",
           seconds: seconds,
-          tabId: tabs[0].id
+          tabId: tabId
         });
+
+        startCountdown(tabId);
       }
     });
   });
 
   stopBtn.addEventListener("click", function () {
     clearInterval(countdownInterval);
-    statusText.textContent = "Stop";
+    statusText.textContent = "Stopped.";
 
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       if (tabs.length > 0) {
